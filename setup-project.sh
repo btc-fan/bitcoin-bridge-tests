@@ -1,61 +1,95 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Create main project directory
-mkdir bitcoin-bridge-tests
-cd bitcoin-bridge-tests
+# ── settings ──────────────────────────────────────────────────────────────────
+PROJECT=bitcoin-bridge-tests
+NODE_REQUIRED=20
 
-# Create main directories
-mkdir -p tests/api
-mkdir -p tests/e2e
-mkdir -p tests/security
-mkdir -p lib/bitcoin
-mkdir -p lib/bridge
-mkdir -p lib/utils
-mkdir -p fixtures
-mkdir -p config
+# ── project skeleton ──────────────────────────────────────────────────────────
+mkdir -p "$PROJECT" && cd "$PROJECT"
+npm init -y                                               # package.json
+npm pkg set type="module"
 
-# Create test files structure
-touch tests/api/bridge-status.spec.ts
-touch tests/api/pegin-transactions.spec.ts
-touch tests/api/pegout-transactions.spec.ts
-touch tests/api/federation.spec.ts
+# core test stack
+npm i -D @playwright/test playwright-bdd@latest @cucumber/cucumber \
+       typescript ts-node @types/node                     \
+       bitcoin-core bitcoinjs-lib axios dotenv            \
+       eslint prettier eslint-plugin-cucumber eslint-config-prettier \
+       husky lint-staged
 
-touch tests/e2e/full-pegin-flow.spec.ts
-touch tests/e2e/full-pegout-flow.spec.ts
-touch tests/e2e/error-scenarios.spec.ts
+npx playwright install --with-deps                        # browsers:contentReference[oaicite:0]{index=0}
 
-touch tests/security/input-validation.spec.ts
-touch tests/security/rate-limiting.spec.ts
-touch tests/security/double-spending.spec.ts
+# TypeScript
+npx tsc --init --rootDir src --outDir dist \
+          --moduleResolution node --esModuleInterop \
+          --resolveJsonModule --strict
 
-# Create lib files
-touch lib/bitcoin/utxo-manager.ts
-touch lib/bitcoin/transaction-builder.ts
-touch lib/bitcoin/script-validator.ts
+# folders
+mkdir -p {features,steps,.features-gen,src/{lib/{bitcoin,bridge,utils},tests/{api,e2e,security}},config,fixtures}
 
-touch lib/bridge/api-client.ts
-touch lib/bridge/bridge-monitor.ts
-touch lib/bridge/transaction-tracker.ts
+# Playwright config (points runner to generated BDD tests)
+cat > playwright.config.ts <<'EOF'
+import { defineConfig } from '@playwright/test';
+export default defineConfig({
+  testDir: '.features-gen',
+  timeout: 120000,
+  reporter: [['list'], ['html', { outputFolder: 'reports' }]],
+  use: { trace: 'on-first-retry' }
+});
+EOF
 
-touch lib/utils/test-helpers.ts
-touch lib/utils/data-generators.ts
-touch lib/utils/fixtures.ts
+# Cucumber config for step defs
+cat > cucumber.mjs <<'EOF'
+export default {
+  default: {
+    require: ['steps/**/*.ts'],
+    publishQuiet: true
+  }
+};
+EOF
 
-# Create fixture files
-touch fixtures/test-transactions.json
-touch fixtures/test-addresses.json
-touch fixtures/mock-responses.json
+# sample feature & step stub
+cat > features/pegin.feature <<'EOF'
+Feature: Peg-in BTC to RSK
+  Scenario: Successful peg-in
+    Given a funded Bitcoin address
+    When I submit a peg-in transaction
+    Then the bridge credits the corresponding RSK address
+EOF
 
-# Create config files
-touch config/test-environments.ts
-touch config/bitcoin-regtest.ts
-touch config/rsk-regtest.ts
-touch config/global-setup.ts
-touch config/global-teardown.ts
+mkdir -p steps && cat > steps/pegin.steps.ts <<'EOF'
+import { Given, When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
 
-# Create root files
-touch package.json
-touch playwright.config.ts
-touch .env.example
-touch .gitignore
-touch README.md
+Given('a funded Bitcoin address', async function () {
+  /* TODO: create regtest address & fund via bitcoin-core RPC */
+});
+
+When('I submit a peg-in transaction', async function () {
+  /* TODO: broadcast tx and wait for confirmations */
+});
+
+Then('the bridge credits the corresponding RSK address', async function () {
+  /* TODO: poll bridge API & assert balance */
+  expect(true).toBeTruthy();
+});
+EOF
+
+# env template
+cat > .env.example <<'EOF'
+BTC_RPC=http://user:pass@127.0.0.1:18443
+RSK_RPC=http://127.0.0.1:4444
+BRIDGE_API=http://localhost:3000
+EOF
+
+# git + pre-commit linting
+git init
+npx husky install
+npm pkg set scripts.prepare="husky install"
+npx husky add .husky/pre-commit "npx lint-staged"
+
+# convenient scripts
+npm pkg set scripts.bddgen="bddgen"
+npm pkg set scripts.test="bddgen && playwright test"
+
+echo -e "\n✔  Bootstrap complete.  Next:\n  cp .env.example .env\n  npm run test"

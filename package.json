@@ -1,0 +1,37 @@
+{
+  "name": "bitcoin-bridge-tests",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run bddgen && playwright test",
+    "prepare": "husky install",
+    "bddgen": "bddgen"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.3.0",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.23",
+    "axios": "^1.9.0",
+    "bitcoin-core": "^5.0.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "dotenv": "^16.5.0",
+    "ecpair": "^3.0.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-cucumber": "^2.0.0",
+    "ethers": "^6.14.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "playwright-bdd": "^8.2.1",
+    "prettier": "^3.5.3",
+    "regtest-client": "^0.2.1",
+    "tiny-secp256k1": "^2.2.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
